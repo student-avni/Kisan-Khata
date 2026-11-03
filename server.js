@@ -55,17 +55,19 @@ async function askGemini(text) {
     }
   }
 // ---------- backup parser (no AI) ----------
+// ---------- backup parser (no AI) ----------
 function localParse(text) {
   const t = text.replace(/,/g, '');
   const nums = t.match(/\d+/g) || [];
   const near = t.match(/(\d+)\s*(बाकी|रुपये|रुपए|रुपया|₹)/);
   const amount = near ? Number(near[1]) : (nums.length ? Number(nums[nums.length - 1]) : null);
-  const customer = t.trim().split(/\s+/)[0];
+  const nm = t.trim().match(/^(.+?)\s+(को|ने|से|का|की)\s/);
+  const customer = nm ? nm[1] : t.trim().split(/\s+/)[0];
   const u = { intent: 'unknown', customer, item: null, amount, remind_on: null };
 
-  if (/किससे|लेने हैं|सुनाओ|हिसाब सुना/.test(t)) { u.intent = 'briefing'; u.customer = null; u.amount = null; return u; }
-  if (/ने/.test(t) && /(दिए|दिये|दिया|मिले)/.test(t) && amount) { u.intent = 'payment'; return u; }
-  if (/(बाकी|उधार|दी |दिया)/.test(t) && amount) {
+  if (/किससे|सुनाओ|हिसाब सुना/.test(t)) { u.intent = 'briefing'; u.customer = null; u.amount = null; return u; }
+  if (/\sने\s/.test(t) && /(दिए|दिये|दिया|मिले)/.test(t) && amount) { u.intent = 'payment'; return u; }
+  if (/(बाकी|उधार|दी |दिया|लेने)/.test(t) && amount) {
     u.intent = 'udhaar';
     const it = t.match(/(\d+\s*\S+\s*\S+)\s*(दी|दिया)/);
     u.item = it ? it[1] : null;
@@ -80,9 +82,8 @@ function localParse(text) {
   return u;
 }
 
-
 async function understand(text) {
-  if (/किससे|लेने हैं|सुनाओ|हिसाब सुना/.test(text)) return localParse(text);
+  if (/किससे|सुनाओ|हिसाब सुना/.test(text)) return localParse(text);
   try { return await askGemini(text); }
   catch (e) { console.log('Gemini failed, using backup parser:', e.message.slice(0, 80)); return localParse(text); }
 }
