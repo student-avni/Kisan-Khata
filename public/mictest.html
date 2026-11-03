@@ -1,0 +1,18 @@
+<button id="b" style="font-size:24px;padding:16px">Start mic</button>
+<p id="o" style="font-size:22px">press the button</p>
+<script>
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const o = document.getElementById('o');
+  if (!SR) { o.textContent = 'Speech not supported in this browser'; }
+  else {
+    const r = new SR();
+    r.lang = 'hi-IN';
+    r.onstart = () => o.textContent = 'LISTENING... speak now';
+    r.onerror = e => o.textContent = 'ERROR: ' + e.error;
+    r.onresult = e => o.textContent = 'HEARD: ' + e.results[0][0].transcript;
+    document.getElementById('b').onclick = () => {
+      o.textContent = 'clicked';
+      try { r.start(); } catch (e) { o.textContent = 'START FAIL: ' + e.message; }
+    };
+  }
+</script>

@@ -26,31 +26,34 @@ const totalDue = rows => Object.values(balances(rows)).reduce((a, x) => a + Math
 
 // ---------- AI: speech text -> JSON ----------
 async function understand(text) {
-  const now = new Date();
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const system = `You are the brain of a Hindi voice ledger for an agriculture shop owner in India.
-The user speaks Hindi/English mix (may be written in Devanagari or Roman). Today is ${now.toISOString().slice(0,10)} (${days[now.getDay()]}).
-Return ONLY JSON with these keys:
-- intent: "udhaar" (gave goods on credit / customer owes money), "payment" (customer paid money), "query" (asking how much a customer owes), "briefing" (asking who to collect money from today / overall summary), or "unknown"
-- customer: name in the same script as spoken, or null
-- item: what was sold (e.g. "20 bag khad"), or null
-- amount: number in rupees (for udhaar = amount pending; for payment = amount paid), or null
-- remind_on: YYYY-MM-DD if user asks to remind/collect on some day, else null
-Convert Hindi number words to digits (e.g. "आठ हज़ार" = 8000). Never invent values.`;
-
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    const now = new Date();
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const system = `You are the brain of a Hindi voice ledger for an agriculture shop owner in India.
+  The user speaks Hindi/English mix (may be written in Devanagari or Roman). Today is ${now.toISOString().slice(0,10)} (${days[now.getDay()]}).
+  Return ONLY JSON with these keys:
+  - intent: "udhaar" (gave goods on credit / customer owes money), "payment" (customer paid money), "query" (asking how much a customer owes), "briefing" (asking who to collect money from today / overall summary), or "unknown"
+  - customer: name in the same script as spoken, or null
+  - item: what was sold (e.g. "20 bag khad"), or null
+  - amount: number in rupees (for udhaar = amount pending; for payment = amount paid), or null
+  - remind_on: YYYY-MM-DD if user asks to remind/collect on some day, else null
+  Convert Hindi number words to digits (e.g. "आठ हज़ार" = 8000). Never invent values.`;
+  
+    const body = JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text }] }],
       generationConfig: { responseMimeType: 'application/json', temperature: 0 }
-    })
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data.error?.message || 'AI error');
-  return JSON.parse(data.candidates[0].content.parts[0].text);
-}
+    });
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`;
+  
+    for (let i = 0; i < 4; i++) {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      const data = await r.json();
+      if (r.ok) return JSON.parse(data.candidates[0].content.parts[0].text);
+      const busy = r.status === 503 || r.status === 429 || /demand|overloaded/i.test(data.error?.message || '');
+      if (!busy || i === 3) throw new Error(data.error?.message || 'AI error');
+      await new Promise(res => setTimeout(res, 1500 * (i + 1)));
+    }
+  }
 
 // ---------- action + Hindi reply ----------
 const rs = n => '₹' + Number(n).toLocaleString('en-IN');

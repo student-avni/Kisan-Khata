@@ -238,8 +238,15 @@
       finalText = t; $('heard').textContent = t;
     };
     rec.onerror = e => { setState('idle', IDLE); $('err').textContent = 'Mic error: ' + e.error; };
-    rec.onend = () => { if (!finalText) return setState('idle', IDLE); sendToServer(finalText); };
-    $('mic').onclick = () => { speechSynthesis.cancel(); try { rec.start(); } catch (e) {} };
+    rec.onend = () => {
+      if (!finalText) { setState('idle', IDLE); $('err').textContent = 'कुछ सुनाई नहीं दिया, फिर से कोशिश कीजिए'; return; }
+      sendToServer(finalText);
+    };
+    $('mic').onclick = () => {
+      $('status').textContent = 'माइक शुरू हो रहा है…';
+      speechSynthesis.cancel();
+      try { rec.start(); } catch (e) { $('err').textContent = 'Mic error: ' + e.message; }
+    };
   }
 
   fetch('/api/ledger').then(r => r.json()).then(d => renderLedger(d.ledger, d.total)).catch(() => {});
