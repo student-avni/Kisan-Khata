@@ -45,13 +45,13 @@ async function askGemini(text) {
     });
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`;
   
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 2; i++) {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
       const data = await r.json();
       if (r.ok) return JSON.parse(data.candidates[0].content.parts[0].text);
-      const busy = r.status === 503 || r.status === 429 || /demand|overloaded/i.test(data.error?.message || '');
-      if (!busy || i === 3) throw new Error(data.error?.message || 'AI error');
-      await new Promise(res => setTimeout(res, 1500 * (i + 1)));
+      const busy = r.status === 503;
+      if (!busy || i === 1) throw new Error(data.error?.message || 'AI error');
+      await new Promise(res => setTimeout(res, 800));
     }
   }
 // ---------- backup parser (no AI) ----------
