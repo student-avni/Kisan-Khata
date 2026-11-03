@@ -115,6 +115,10 @@
         <div id="status">माइक दबाइए और बोलिए</div>
         <div id="err"></div>
       </div>
+      <div id="confirmBox" hidden><div style="display:flex;gap:8px;margin-bottom:14px">
+        <button onclick="sendToServer('हाँ')" style="flex:1;padding:12px;border:0;border-radius:10px;background:#1f7a4d;color:#fff;font:inherit;font-weight:700;cursor:pointer">✅ हाँ</button>
+        <button onclick="sendToServer('नहीं')" style="flex:1;padding:12px;border:0;border-radius:10px;background:#b3261e;color:#fff;font:inherit;font-weight:700;cursor:pointer">❌ नहीं</button>
+      </div></div>
       <button id="briefBtn" style="width:100%;margin-bottom:14px;padding:12px;border:1px solid #f0d9a0;border-radius:10px;background:#fdf3dc;color:#b7791f;font:inherit;font-weight:600;cursor:pointer">☀️ आज का हिसाब सुनाओ</button>
       <div class="hints">
         <div class="label">ऐसे बोलकर देखिए (दबाने पर भी चलेगा)</div>
@@ -179,12 +183,12 @@
     $('understood').hidden = false;
   }
 
-  // ---------- Voice OUT ----------
-  let voices = [];
+    // ---------- Voice OUT ----------
+    let voices = [];
   const loadVoices = () => { voices = speechSynthesis.getVoices(); };
   loadVoices(); speechSynthesis.onvoiceschanged = loadVoices;
 
-  function speak(text) {
+  function speak(text, listenAfter) {
     $('reply').textContent = text;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
@@ -192,30 +196,39 @@
     const hi = voices.find(v => v.lang.replace('_', '-') === 'hi-IN');
     if (hi) u.voice = hi;
     u.onstart = () => setState('speaking', 'बोल रहा हूँ…');
-    u.onend = () => setState('idle', IDLE);
+    u.onend = () => { setState('idle', IDLE); if (listenAfter && window.startListen) window.startListen(); };
     speechSynthesis.speak(u);
   }
 
   // ---------- server ----------
-  async function sendToServer(text) {
-    $('heard').textContent = text;
+  let pending = null;
+  async function post(body) {
     setState('thinking', 'समझ रहा हूँ…');
     try {
       const r = await fetch('/api/talk', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+        body: JSON.stringify(body)
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Server error');
       renderUnderstood(data.understood);
       renderLedger(data.ledger, data.total);
-      speak(data.reply);
+      if (data.needConfirm) { pending = data.understood; $('confirmBox').hidden = false; speak(data.reply, true); }
+      else { pending = null; $('confirmBox').hidden = true; speak(data.reply); }
     } catch (e) {
       setState('idle', IDLE);
       $('err').textContent = 'Error: ' + e.message;
     }
   }
-
+  async function sendToServer(text) {
+    $('heard').textContent = text;
+    if (pending) {
+      if (/नहीं|नही|गलत|\bno\b/i.test(text)) { pending = null; $('confirmBox').hidden = true; speak('ठीक है, रद्द कर दिया।'); return; }
+      if (/हाँ|हां|हा|सही|ठीक|yes|haan/i.test(text)) { const u = pending; pending = null; $('confirmBox').hidden = true; return post({ understood: u }); }
+      pending = null; $('confirmBox').hidden = true;
+    }
+    return post({ text });
+  }
   document.querySelectorAll('.hint').forEach(b => b.onclick = () => sendToServer(b.textContent));
   $('sendTyped').onclick = () => { const t = $('typed').value.trim(); if (t) { sendToServer(t); $('typed').value = ''; } };
   $('typed').onkeydown = e => { if (e.key === 'Enter') $('sendTyped').click(); };
@@ -242,6 +255,7 @@
       if (!finalText) { setState('idle', IDLE); $('err').textContent = 'कुछ सुनाई नहीं दिया, फिर से कोशिश कीजिए'; return; }
       sendToServer(finalText);
     };
+    window.startListen = () => { try { rec.start(); } catch (e) {} };
     $('mic').onclick = () => {
       $('status').textContent = 'माइक शुरू हो रहा है…';
       speechSynthesis.cancel();

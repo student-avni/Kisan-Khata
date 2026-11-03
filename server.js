@@ -124,9 +124,16 @@ function act(u, rows) {
 // ---------- routes ----------
 app.post('/api/talk', async (req, res) => {
   try {
-    const text = (req.body.text || '').trim();
-    if (!text) return res.status(400).json({ error: 'empty text' });
-    const u = await understand(text);
+    let u = req.body.understood;
+    if (!u) {
+      const text = (req.body.text || '').trim();
+      if (!text) return res.status(400).json({ error: 'empty text' });
+      u = await understand(text);
+      if ((u.intent === 'udhaar' || u.intent === 'payment') && u.customer && u.amount) {
+        const rows = load();
+        return res.json({ understood: u, needConfirm: true, reply: `${u.customer}, ${rs(u.amount)}, सही है?`, ledger: balances(rows), total: totalDue(rows) });
+      }
+    }
     const out = act(u, load());
     if (out.changed) save(out.rows);
     res.json({ understood: u, reply: out.reply, ledger: balances(out.rows), total: totalDue(out.rows) });
