@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>किसान खाता</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f7f4; --surface: #ffffff; --border: #e2e8e0;
+    --text: #17231c; --muted: #667a6d;
+    --primary: #1f7a4d; --primary-dark: #17603c;
+    --amber: #b7791f; --amber-bg: #fdf3dc; --green-bg: #e3f4ea;
+    --state: #1f7a4d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', 'Noto Sans Devanagari', sans-serif; }
+  body[data-state="listening"] { --state: #2f9e5b; }
+  body[data-state="thinking"]  { --state: #d98a1b; }
+  body[data-state="speaking"]  { --state: #2f6fd6; }
+
+  header { background: linear-gradient(135deg, #17603c, #2a9460); color: #fff; padding: 22px 24px; }
+  .head-in { max-width: 1000px; margin: 0 auto; }
+  header h1 { margin: 0; font-size: 1.7rem; font-weight: 700; }
+  header p { margin: 4px 0 0; opacity: .9; }
+
+  main { max-width: 1000px; margin: 20px auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; box-shadow: 0 2px 8px rgba(23,35,28,.05); }
+  .panel h2 { margin: 0 0 16px; font-size: 1.05rem; font-weight: 600; }
+
+  .mic-area { display: flex; flex-direction: column; align-items: center; margin-bottom: 18px; }
+  .mic-wrap { position: relative; width: 130px; height: 130px; display: grid; place-items: center; }
+  .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--state); opacity: 0; }
+  #mic {
+    width: 92px; height: 92px; border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--state); color: #fff; display: grid; place-items: center;
+    box-shadow: 0 6px 16px rgba(0,0,0,.22); transition: background .2s, transform .1s;
+  }
+  #mic:active { transform: scale(.95); }
+  #mic:focus-visible { outline: 3px solid #17231c; outline-offset: 4px; }
+  #mic svg { width: 38px; height: 38px; }
+  body[data-state="listening"] .ring, body[data-state="speaking"] .ring { animation: pulse 1.3s infinite; }
+  body[data-state="thinking"] .ring { opacity: 1; border-style: dashed; animation: spin 3s linear infinite; }
+  .ring + .ring { animation-delay: .6s !important; }
+  body[data-state="thinking"] .ring + .ring { display: none; }
+  @keyframes pulse { from { transform: scale(.8); opacity: .8; } to { transform: scale(1.25); opacity: 0; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .ring { animation: none !important; } }
+  #status { margin-top: 8px; font-weight: 500; color: var(--muted); min-height: 1.5em; }
+  #err { color: #b3261e; font-size: .9rem; margin-top: 6px; text-align: center; }
+
+  .hints { margin-bottom: 18px; }
+  .hints .label { font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+  .hint {
+    display: block; width: 100%; text-align: left; margin-bottom: 6px; cursor: pointer;
+    background: var(--green-bg); color: var(--primary-dark); border: 1px solid #bfe3cd;
+    border-radius: 10px; padding: 8px 12px; font: inherit; font-size: .92rem;
+  }
+  .hint:hover { background: #d3eddd; }
+
+  .typebox { display: flex; gap: 8px; margin-bottom: 18px; }
+  .typebox input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font: inherit; }
+  .typebox button { padding: 10px 16px; border: 0; border-radius: 10px; background: var(--primary); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+
+  .field { margin-bottom: 14px; }
+  .field .label { font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+  #heard, #reply { min-height: 1.6em; font-size: 1.05rem; }
+  #reply { color: var(--primary-dark); font-weight: 500; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: .9rem; }
+
+  .stats { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .stat { border-radius: 12px; padding: 12px; background: var(--bg); }
+  .stat .label { font-size: .75rem; color: var(--muted); }
+  .stat .value { font-size: 1.35rem; font-weight: 700; }
+  .stat.main { background: var(--green-bg); }
+  .stat.main .value { font-size: 1.7rem; color: var(--primary-dark); }
+  .stat.warn .value { color: var(--amber); }
+
+  .row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .row:last-child { border-bottom: 0; }
+  .row .name { font-weight: 500; display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--green-bg); color: var(--primary-dark); display: grid; place-items: center; font-weight: 700; }
+  .row .right { display: flex; align-items: center; gap: 10px; }
+  .row .amt { font-weight: 600; }
+  .pill { font-size: .75rem; padding: 3px 10px; border-radius: 999px; font-weight: 600; }
+  .pill.due { background: var(--amber-bg); color: var(--amber); }
+  .pill.paid { background: var(--green-bg); color: var(--primary-dark); }
+  .empty { color: var(--muted); padding: 12px 0; }
+</style>
+</head>
+<body data-state="idle">
+  <header>
+    <div class="head-in">
+      <h1>🌾 किसान खाता</h1>
+      <p>बोलिए, हिसाब अपने आप लिखा जाएगा</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>बोलिए</h2>
+      <div class="mic-area">
+        <div class="mic-wrap">
+          <span class="ring"></span><span class="ring"></span>
+          <button id="mic" aria-label="बोलने के लिए दबाएँ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/>
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+            </svg>
+          </button>
+        </div>
+        <div id="status">माइक दबाइए और बोलिए</div>
+        <div id="err"></div>
+      </div>
+
+      <div class="hints">
+        <div class="label">ऐसे बोलकर देखिए (दबाने पर भी चलेगा)</div>
+        <button class="hint">रमेश को 20 बोरी खाद दी, 8000 बाकी, सोमवार को पैसे माँगना</button>
+        <button class="hint">रमेश ने 3000 रुपये दिए</button>
+        <button class="hint">आज किससे पैसे लेने हैं?</button>
+      </div>
+
+      <div class="typebox">
+        <input id="typed" placeholder="या यहाँ लिखिए…">
+        <button id="sendTyped">भेजें</button>
+      </div>
+
+      <div class="field"><div class="label">आपने कहा</div><div id="heard">—</div></div>
+      <div class="field" id="understood" hidden>
+        <div class="label">ऐप ने समझा</div>
+        <div class="chips" id="ugrid"></div>
+      </div>
+      <div class="field"><div class="label">जवाब</div><div id="reply">—</div></div>
+    </section>
+
+    <section class="panel">
+      <h2>बही खाता</h2>
+      <div class="stats">
+        <div class="stat main"><div class="label">कुल बाकी</div><div class="value" id="total">₹0</div></div>
+        <div class="stat warn"><div class="label">बाकी वाले</div><div class="value" id="statDue">0</div></div>
+        <div class="stat"><div class="label">चुकता</div><div class="value" id="statPaid">0</div></div>
+      </div>
+      <div id="rows"><div class="empty">अभी कोई हिसाब नहीं</div></div>
+    </section>
+  </main>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const IDLE = 'माइक दबाइए और बोलिए';
+  const setState = (s, text) => { document.body.dataset.state = s; $('status').textContent = text; };
+  const rs = n => '₹' + Number(n).toLocaleString('en-IN');
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function renderLedger(ledger, total) {
+    $('total').textContent = rs(total);
+    const names = Object.keys(ledger);
+    $('statDue').textContent = names.filter(n => ledger[n] > 0).length;
+    $('statPaid').textContent = names.filter(n => ledger[n] <= 0).length;
+    if (!names.length) { $('rows').innerHTML = '<div class="empty">अभी कोई हिसाब नहीं</div>'; return; }
+    $('rows').innerHTML = names.sort((a, b) => ledger[b] - ledger[a]).map(n => {
+      const v = ledger[n];
+      const right = v <= 0
+        ? '<span class="pill paid">चुकता</span>'
+        : `<span class="amt">${rs(v)}</span><span class="pill due">बाकी</span>`;
+      return `<div class="row"><span class="name"><span class="avatar">${esc(n.charAt(0))}</span>${esc(n)}</span><span class="right">${right}</span></div>`;
+    }).join('');
+  }
+
+  function renderUnderstood(u) {
+    const labels = { intent: 'काम', customer: 'ग्राहक', item: 'सामान', amount: 'रकम', remind_on: 'याद दिलाना' };
+    const intents = { udhaar: 'उधार लिखा', payment: 'पैसे मिले', query: 'हिसाब पूछा', briefing: 'आज का हाल', unknown: 'समझ नहीं आया' };
+    $('ugrid').innerHTML = Object.keys(labels)
+      .filter(k => u[k] !== null && u[k] !== undefined)
+      .map(k => `<span class="chip">${labels[k]}: <b>${esc(k === 'intent' ? (intents[u[k]] || u[k]) : k === 'amount' ? rs(u[k]) : u[k])}</b></span>`)
+      .join('');
+    $('understood').hidden = false;
+  }
+
+  // ---------- Voice OUT ----------
+  let voices = [];
+  const loadVoices = () => { voices = speechSynthesis.getVoices(); };
+  loadVoices(); speechSynthesis.onvoiceschanged = loadVoices;
+
+  function speak(text) {
+    $('reply').textContent = text;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'hi-IN';
+    const hi = voices.find(v => v.lang.replace('_', '-') === 'hi-IN');
+    if (hi) u.voice = hi;
+    u.onstart = () => setState('speaking', 'बोल रहा हूँ…');
+    u.onend = () => setState('idle', IDLE);
+    speechSynthesis.speak(u);
+  }
+
+  // ---------- server ----------
+  async function sendToServer(text) {
+    $('heard').textContent = text;
+    setState('thinking', 'समझ रहा हूँ…');
+    try {
+      const r = await fetch('/api/talk', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Server error');
+      renderUnderstood(data.understood);
+      renderLedger(data.ledger, data.total);
+      speak(data.reply);
+    } catch (e) {
+      setState('idle', IDLE);
+      $('err').textContent = 'Error: ' + e.message;
+    }
+  }
+
+  document.querySelectorAll('.hint').forEach(b => b.onclick = () => sendToServer(b.textContent));
+  $('sendTyped').onclick = () => { const t = $('typed').value.trim(); if (t) { sendToServer(t); $('typed').value = ''; } };
+  $('typed').onkeydown = e => { if (e.key === 'Enter') $('sendTyped').click(); };
+
+  // ---------- Voice IN ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    $('err').textContent = 'Please open this page in Google Chrome.';
+    $('mic').disabled = true;
+  } else {
+    const rec = new SR();
+    rec.lang = 'hi-IN';
+    rec.interimResults = true;
+    rec.continuous = false;
+    let finalText = '';
+    rec.onstart = () => { finalText = ''; $('err').textContent = ''; setState('listening', 'सुन रहा हूँ…'); };
+    rec.onresult = e => {
+      let t = '';
+      for (const r of e.results) t += r[0].transcript;
+      finalText = t; $('heard').textContent = t;
+    };
+    rec.onerror = e => { setState('idle', IDLE); $('err').textContent = 'Mic error: ' + e.error; };
+    rec.onend = () => { if (!finalText) return setState('idle', IDLE); sendToServer(finalText); };
+    $('mic').onclick = () => { speechSynthesis.cancel(); try { rec.start(); } catch (e) {} };
+  }
+
+  fetch('/api/ledger').then(r => r.json()).then(d => renderLedger(d.ledger, d.total)).catch(() => {});
+</script>
+</body>
+</html>
