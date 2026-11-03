@@ -115,7 +115,7 @@
         <div id="status">माइक दबाइए और बोलिए</div>
         <div id="err"></div>
       </div>
-
+      <button id="briefBtn" style="width:100%;margin-bottom:14px;padding:12px;border:1px solid #f0d9a0;border-radius:10px;background:#fdf3dc;color:#b7791f;font:inherit;font-weight:600;cursor:pointer">☀️ आज का हिसाब सुनाओ</button>
       <div class="hints">
         <div class="label">ऐसे बोलकर देखिए (दबाने पर भी चलेगा)</div>
         <button class="hint">रमेश को 20 बोरी खाद दी, 8000 बाकी, सोमवार को पैसे माँगना</button>
@@ -248,7 +248,7 @@
       try { rec.start(); } catch (e) { $('err').textContent = 'Mic error: ' + e.message; }
     };
   }
-
+  $('briefBtn').onclick = () => sendToServer('आज किससे पैसे लेने हैं?');
   fetch('/api/ledger').then(r => r.json()).then(d => renderLedger(d.ledger, d.total)).catch(() => {});
 </script>
 </body>

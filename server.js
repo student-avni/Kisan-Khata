@@ -25,7 +25,7 @@ function balances(rows) {
 const totalDue = rows => Object.values(balances(rows)).reduce((a, x) => a + Math.max(x, 0), 0);
 
 // ---------- AI: speech text -> JSON ----------
-async function understand(text) {
+async function askGemini(text) {
     const now = new Date();
     const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     const system = `You are the brain of a Hindi voice ledger for an agriculture shop owner in India.
@@ -54,6 +54,36 @@ async function understand(text) {
       await new Promise(res => setTimeout(res, 1500 * (i + 1)));
     }
   }
+// ---------- backup parser (no AI) ----------
+function localParse(text) {
+  const t = text.replace(/,/g, '');
+  const nums = t.match(/\d+/g) || [];
+  const near = t.match(/(\d+)\s*(बाकी|रुपये|रुपए|रुपया|₹)/);
+  const amount = near ? Number(near[1]) : (nums.length ? Number(nums[nums.length - 1]) : null);
+  const customer = t.trim().split(/\s+/)[0];
+  const u = { intent: 'unknown', customer, item: null, amount, remind_on: null };
+
+  if (/किससे|लेने हैं|सुनाओ|हिसाब सुना/.test(t)) { u.intent = 'briefing'; u.customer = null; u.amount = null; return u; }
+  if (/ने/.test(t) && /(दिए|दिये|दिया|मिले)/.test(t) && amount) { u.intent = 'payment'; return u; }
+  if (/(बाकी|उधार|दी |दिया)/.test(t) && amount) {
+    u.intent = 'udhaar';
+    const it = t.match(/(\d+\s*\S+\s*\S+)\s*(दी|दिया)/);
+    u.item = it ? it[1] : null;
+    const days = { 'सोमवार': 1, 'मंगलवार': 2, 'बुधवार': 3, 'गुरुवार': 4, 'शुक्रवार': 5, 'शनिवार': 6, 'रविवार': 0 };
+    for (const [d, n] of Object.entries(days)) {
+      if (t.includes(d)) {
+        const x = new Date(); x.setDate(x.getDate() + ((n - x.getDay() + 7) % 7 || 7));
+        u.remind_on = x.toISOString().slice(0, 10);
+      }
+    }
+  }
+  return u;
+}
+
+async function understand(text) {
+  try { return await askGemini(text); }
+  catch (e) { console.log('Gemini failed, using backup parser:', e.message.slice(0, 80)); return localParse(text); }
+}
 
 // ---------- action + Hindi reply ----------
 const rs = n => '₹' + Number(n).toLocaleString('en-IN');
