@@ -80,7 +80,9 @@ function localParse(text) {
   return u;
 }
 
+
 async function understand(text) {
+  if (/किससे|लेने हैं|सुनाओ|हिसाब सुना/.test(text)) return localParse(text);
   try { return await askGemini(text); }
   catch (e) { console.log('Gemini failed, using backup parser:', e.message.slice(0, 80)); return localParse(text); }
 }
