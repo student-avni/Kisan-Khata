@@ -7,7 +7,7 @@
 
 🎙️ Voice in &nbsp;•&nbsp; 🔊 Voice out &nbsp;•&nbsp; ✅ Voice confirm &nbsp;•&nbsp; 📒 Real ledger
 
-**[🚀 Live demo](https://kisan-khata.onrender.com)** &nbsp;|&nbsp; **[🎬 Demo video](PASTE_DRIVE_LINK_HERE)**
+**[🚀 Live demo](https://kisan-khata.onrender.com)** &nbsp;|&nbsp; **[🎬 Demo video](https://drive.google.com/file/d/1y-xSL7ITcuQVUJ_WcvA8Rhafw4lok16j/view?usp=sharing)**
 
 </div>
 
